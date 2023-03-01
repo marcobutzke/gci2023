@@ -16,14 +16,8 @@ estados = load_database()
 dados, estatistica = st.tabs(['Dados', 'Estatística Descritiva'])
 
 with dados:
-    regiao = st.selectbox(
-        'Selecione a Região:',
-        estados['regiao_nome'].unique()
-    )
+    regiao = st.selectbox('Selecione a Região:', estados['regiao_nome'].unique())
     st.dataframe(estados[estados['regiao_nome'] == regiao])
 with estatistica:
-    variavel = st.selectbox(
-        'Selecione a variavel',
-        ['area', 'populacao', 'idh', 'matricula']
-    )     
+    variavel = st.selectbox('Selecione a variavel', ['area', 'populacao', 'idh', 'matricula'])     
     st.table(estados[variavel].describe())
