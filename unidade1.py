@@ -28,7 +28,7 @@ st.title('Meu primeiro App - GCI')
 
 estados, fronteiras = load_database()
 
-dados, estatistica, outlier, zvalues = st.tabs(['Dados', 'Estatística Descritiva', 'Outliers', 'Valores Padronizados'])
+dados, estatistica, outlier, zvalues, grupos = st.tabs(['Dados', 'Estatística Descritiva', 'Outliers', 'Valores Padronizados', 'Grupos'])
 
 variaveis = ['area', 'populacao', 'densidade', 'matricula', 'idh', 'receitas', 'despesas', 'rendimento', 'veiculos']
 
@@ -199,5 +199,41 @@ with zvalues:
                 datac = datac.merge(dataz, left_index=True, right_index=True)
                 data_sort = datac.sort_values(by='ranking')
                 st.table(data_sort.style.hide_index().background_gradient(cmap='Blues'))
+with grupos:
+    variavel = st.selectbox('Selecione a variavel para agrupar', variaveis)
+    estados_variavel = estados[['uf', variavel]].sort_values(by=variavel, ascending=False)
+    soma = estados[variavel].sum()
+    estados_variavel['percentual'] = round(estados_variavel[variavel] / soma * 100, 2)
+    estados_variavel['acumulado'] = estados_variavel['percentual'].cumsum()
+    estados_variavel['curva_abc'] = estados_variavel['acumulado'].apply(
+        lambda x : 'A' if x <= 65 else ('B' if x <= 90 else 'C')
+    )
+    estados_variavel['legenda'] = estados_variavel.apply(
+        lambda x : x['uf'] if x['curva_abc'] != 'C' else 'Outros', axis = 1
+    )
+    with st.expander('Tabela'):
+        st.table(estados_variavel)
+    with st.expander('Gráficos'):      
+        col1, col2, col3 = st.columns(3)
+        col1.altair_chart(
+            alt.Chart(estados_variavel).mark_arc(innerRadius=50).encode(
+                theta=alt.Theta(field=variavel, type="quantitative"),
+                color=alt.Color(field="uf", type="nominal"),
+            )
+        )
+        col2.altair_chart(
+            alt.Chart(estados_variavel).mark_arc(innerRadius=50).encode(
+                theta=alt.Theta(field=variavel, type="quantitative"),
+                color=alt.Color(field="legenda", type="nominal"),
+            )
+        )
+        col3.altair_chart(
+            alt.Chart(estados_variavel).mark_arc(innerRadius=50).encode(
+                theta=alt.Theta(field=variavel, type="quantitative"),
+                color=alt.Color(field="curva_abc", type="nominal"),
+            )
+        )
+
+
 
 
