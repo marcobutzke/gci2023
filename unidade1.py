@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import json
 import plotly.express as px
+from itertools import combinations
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 st.set_page_config(layout="wide")
 
@@ -28,7 +31,19 @@ st.title('Meu primeiro App - GCI')
 
 estados, fronteiras = load_database()
 
-dados, estatistica, outlier, zvalues, grupos = st.tabs(['Dados', 'Estatística Descritiva', 'Outliers', 'Valores Padronizados', 'Grupos'])
+dados, estatistica, outlier, zvalues, grupos, correl, regres, indvif, ianova = st.tabs(
+    [
+        'Dados', 
+        'Estatística Descritiva', 
+        'Outliers', 
+        'Valores Padronizados', 
+        'Grupos',
+        'Correlação',
+        'Regressão',
+        'VIF',
+        'ANOVA'
+    ]
+)
 
 variaveis = ['area', 'populacao', 'densidade', 'matricula', 'idh', 'receitas', 'despesas', 'rendimento', 'veiculos']
 
@@ -233,7 +248,69 @@ with grupos:
                 color=alt.Color(field="curva_abc", type="nominal"),
             )
         )
-
-
+with correl:
+    data = estados[
+    [
+        'area',
+        'populacao',
+        'densidade',
+        'matricula',
+        'idh',
+        'receitas',
+        'despesas',
+        'rendimento',
+        'veiculos'
+    ]]
+    corr = data.corr()
+    st.table(corr)
+with regres:
+    op_x = st.selectbox('Variável X:', variaveis, index=0)
+    op_y = st.selectbox('Variável Y:', variaveis, index=1)
+    if op_x != op_y:
+        chart = alt.Chart(estados).mark_point().encode(
+            x=op_x,
+            y=op_y
+        )
+        # chart = chart + chart.transform_regression('x', 'y').mark_line()
+        st.altair_chart(chart)
+with indvif:
+    data = estados[
+    [
+        'area',
+        'populacao',
+        'densidade',
+        'matricula',
+        'idh',
+        'receitas',
+        'despesas',
+        'rendimento',
+        'veiculos'
+    ]]
+    selecao = st.multiselect('Variáveis: ', variaveis)
+    if len(selecao) > 1:
+        vif = data[selecao]
+        vif_data = pd.DataFrame()
+        vif_data["feature"] = vif.columns
+        vif_data["VIF"] = [variance_inflation_factor(vif.values, i)
+                        for i in range(len(vif.columns))]
+        st.table(vif_data)
+with ianova:
+    variavel = st.selectbox('colunas', variaveis)
+    st.altair_chart(alt.Chart(estados).mark_boxplot().encode(x='regiao_nome', y=variavel))
+    tukey = pairwise_tukeyhsd(endog=estados[variavel], groups=estados['regiao_nome'], alpha=0.05)
+    df_tukey = pd.DataFrame()
+    combinacao = combinations(tukey.groupsunique,2)
+    for grupo in list(combinacao):
+        df_tukey = df_tukey.append(
+            {
+                'grupo1': grupo[0],
+                'grupo2': grupo[1]
+            },
+            ignore_index = True
+        )    
+    df_tukey['reject'] = tukey.reject
+    df_tukey['meandiffs'] = tukey.meandiffs
+    df_tukey['pvalues'] = tukey.pvalues 
+    st.dataframe(df_tukey)    
 
 
